@@ -32,6 +32,7 @@ type HostEnvironment struct {
 	Workdir   string
 	ActPath   string
 	CleanUp   func()
+	CleanPath bool
 	StdOut    io.Writer
 }
 
@@ -386,7 +387,12 @@ func (e *HostEnvironment) Remove() common.Executor {
 		if e.CleanUp != nil {
 			e.CleanUp()
 		}
-		return os.RemoveAll(e.Path)
+
+		if e.CleanPath {
+			return os.RemoveAll(e.Path)
+		} else {
+			return nil
+		}
 	}
 }
 

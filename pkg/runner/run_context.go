@@ -170,17 +170,30 @@ func (rc *RunContext) GetBindsAndMounts() ([]string, map[string]string) {
 		}
 	}
 
-	if rc.Config.BindWorkdir {
-		bindModifiers := ""
-		if runtime.GOOS == "darwin" {
-			bindModifiers = ":delegated"
+	bindModifiers := ""
+	if runtime.GOOS == "darwin" {
+		bindModifiers = ":delegated"
+	}
+	if selinux.GetEnabled() {
+		bindModifiers = ":z"
+	}
+
+	if rc.Config.SafeMode {
+		//// why bind + container hosted -> JobContainer = nil
+		//// perhaps at this level, the rc JobContainer has not been assigned yet with self
+		localWorkDir := rc.Config.HostExecutorDir
+		rc.Config.ValidVolumes = append(rc.Config.ValidVolumes, localWorkDir)
+		if rc.Run.Workflow.Defaults.Run.WorkingDirectory == "" {
+			rc.Run.Workflow.Defaults.Run.WorkingDirectory = localWorkDir
 		}
-		if selinux.GetEnabled() {
-			bindModifiers = ":z"
-		}
-		binds = append(binds, fmt.Sprintf("%s:%s%s", rc.Config.Workdir, ext.ToContainerPath(rc.Config.Workdir), bindModifiers))
+
+		binds = append(binds, fmt.Sprintf("%s:%s%s", localWorkDir, ext.ToContainerPath(localWorkDir), bindModifiers))
 	} else {
-		mounts[name] = ext.ToContainerPath(rc.Config.Workdir)
+		binds = append(binds, fmt.Sprintf("%s:%s%s", rc.Config.Workdir, ext.ToContainerPath(rc.Config.Workdir), bindModifiers))
+
+		// For Bamboo
+		// we wanted to allow binding for work directory
+		rc.Config.ValidVolumes = append(rc.Config.ValidVolumes, rc.Config.Workdir)
 	}
 
 	// For Gitea
@@ -223,6 +236,11 @@ func (rc *RunContext) startHostEnvironment() common.Executor {
 			return err
 		}
 		toolCache := filepath.Join(cacheDir, "tool_cache")
+		rc.Config.HostExecutorDir = path
+		if rc.Config.SafeMode == false {
+			path = rc.Config.Workdir
+		}
+
 		rc.JobContainer = &container.HostEnvironment{
 			Path:      path,
 			TmpDir:    runnerTmp,
@@ -232,7 +250,8 @@ func (rc *RunContext) startHostEnvironment() common.Executor {
 			CleanUp: func() {
 				os.RemoveAll(miscpath)
 			},
-			StdOut: logWriter,
+			CleanPath: rc.Config.SafeMode,
+			StdOut:    logWriter,
 		}
 		rc.cleanUpJobContainer = rc.JobContainer.Remove()
 		for k, v := range rc.JobContainer.GetRunnerContext(ctx) {
@@ -297,6 +316,20 @@ func (rc *RunContext) startJobContainer() common.Executor {
 		envList = append(envList, fmt.Sprintf("%s=%s", "RUNNER_TEMP", "/tmp"))
 		envList = append(envList, fmt.Sprintf("%s=%s", "LANG", "C.UTF-8")) // Use same locale as GitHub Actions
 
+		cacheDir := rc.ActionCacheDir()
+		randBytes := make([]byte, 8)
+		_, _ = rand.Read(randBytes)
+		miscpath := filepath.Join(cacheDir, hex.EncodeToString(randBytes))
+
+		path := filepath.Join(miscpath, "hostexecutor")
+		if err := os.MkdirAll(path, 0o777); err != nil {
+			return err
+		}
+		if rc.Config.SafeMode == false {
+			path = rc.Config.Workdir
+		}
+
+		rc.Config.HostExecutorDir = path
 		ext := container.LinuxContainerEnvironmentExtensions{}
 		binds, mounts := rc.GetBindsAndMounts()
 
@@ -345,6 +378,7 @@ func (rc *RunContext) startJobContainer() common.Executor {
 			c := container.NewContainer(&container.NewContainerInput{
 				Name:           serviceContainerName,
 				WorkingDir:     ext.ToContainerPath(rc.Config.Workdir),
+				Path:           path,
 				Image:          rc.ExprEval.Interpolate(ctx, spec.Image),
 				Username:       username,
 				Password:       password,
@@ -413,6 +447,7 @@ func (rc *RunContext) startJobContainer() common.Executor {
 			Cmd:            nil,
 			Entrypoint:     []string{"/bin/sleep", fmt.Sprint(rc.Config.ContainerMaxLifetime.Round(time.Second).Seconds())},
 			WorkingDir:     ext.ToContainerPath(rc.Config.Workdir),
+			Path:           path,
 			Image:          image,
 			Username:       username,
 			Password:       password,
@@ -430,10 +465,14 @@ func (rc *RunContext) startJobContainer() common.Executor {
 			Options:        rc.options(ctx),
 			AutoRemove:     rc.Config.AutoRemove,
 			ValidVolumes:   rc.Config.ValidVolumes,
+			CleanUp: func() {
+				os.RemoveAll(miscpath)
+			},
 		})
 		if rc.JobContainer == nil {
 			return errors.New("Failed to create job container")
 		}
+		rc.cleanUpJobContainer = rc.JobContainer.Remove()
 
 		return common.NewPipelineExecutor(
 			rc.pullServicesImages(rc.Config.ForcePull),

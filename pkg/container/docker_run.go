@@ -209,6 +209,18 @@ type containerReference struct {
 	LinuxContainerEnvironmentExtensions
 }
 
+func (c *containerReference) ToContainerPath(path string) string {
+	// call super
+	resolved := c.LinuxContainerEnvironmentExtensions.ToContainerPath(path)
+	if bp, err := filepath.Rel(c.input.WorkingDir, resolved); err != nil {
+		return filepath.Join(c.input.Path, bp)
+	} else if filepath.Clean(c.input.WorkingDir) == filepath.Clean(resolved) {
+		return c.input.Path
+	}
+
+	return resolved
+}
+
 func GetDockerClient(ctx context.Context) (cli client.APIClient, err error) {
 	dockerHost := os.Getenv("DOCKER_HOST")
 
@@ -342,6 +354,10 @@ func (cr *containerReference) remove() common.Executor {
 
 		logger.Debugf("Removed container: %v", cr.id)
 		cr.id = ""
+
+		if cr.input.CleanUp != nil {
+			cr.input.CleanUp()
+		}
 		return nil
 	}
 }

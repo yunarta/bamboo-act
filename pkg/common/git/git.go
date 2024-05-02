@@ -254,9 +254,10 @@ func CloneIfRequired(ctx context.Context, refName plumbing.ReferenceName, input 
 			InsecureSkipTLS: input.InsecureSkipTLS, // For Gitea
 		}
 		if input.Token != "" {
-			cloneOptions.Auth = &http.BasicAuth{
-				Username: "token",
-				Password: input.Token,
+			// For Bamboo
+			// we wanted to use token to pull Bitbucket repository
+			cloneOptions.Auth = &http.TokenAuth{
+				Token: input.Token,
 			}
 		}
 
@@ -279,9 +280,10 @@ func gitOptions(token string) (fetchOptions git.FetchOptions, pullOptions git.Pu
 	pullOptions.Force = true
 
 	if token != "" {
-		auth := &http.BasicAuth{
-			Username: "token",
-			Password: token,
+		// For Bamboo
+		// we wanted to use token to pull Bitbucket repository
+		auth := &http.TokenAuth{
+			Token: token,
 		}
 		fetchOptions.Auth = auth
 		pullOptions.Auth = auth

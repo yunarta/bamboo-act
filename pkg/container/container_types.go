@@ -15,6 +15,7 @@ type NewContainerInput struct {
 	Password       string
 	Entrypoint     []string
 	Cmd            []string
+	Path           string
 	WorkingDir     string
 	Env            []string
 	Binds          []string
@@ -30,6 +31,7 @@ type NewContainerInput struct {
 	NetworkAliases []string
 	ExposedPorts   nat.PortSet
 	PortBindings   nat.PortMap
+	CleanUp        func()
 
 	// Gitea specific
 	AutoRemove   bool

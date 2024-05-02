@@ -155,7 +155,11 @@ func (impl *interperterImpl) evaluateVariable(variableNode *actionlint.VariableN
 	switch strings.ToLower(variableNode.Name) {
 	case "github":
 		return impl.env.Github, nil
-	case "gitea": // compatible with Gitea
+	// For Bamboo
+	// we want to disable gitea so we don't to have our user create gitea variable
+	//case "gitea": // compatible with Gitea
+	//	return impl.env.Github, nil
+	case "bamboo": // compatible with Bamboo
 		return impl.env.Github, nil
 	case "env":
 		return impl.env.Env, nil

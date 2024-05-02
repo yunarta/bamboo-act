@@ -24,9 +24,11 @@ type Runner interface {
 type Config struct {
 	Actor                              string                       // the user that triggered the event
 	Workdir                            string                       // path to working directory
+	HostExecutorDir                    string                       // path to working directory
 	ActionCacheDir                     string                       // path used for caching action contents
 	ActionOfflineMode                  bool                         // when offline, use caching action contents
 	BindWorkdir                        bool                         // bind the workdir to the job container
+	SafeMode                           bool                         // bind the workdir to the job container
 	EventName                          string                       // name of event to run
 	EventPath                          string                       // path to JSON file to use for event.json in containers
 	DefaultBranch                      string                       // name of the main branch for this repository

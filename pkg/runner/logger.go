@@ -97,9 +97,11 @@ func WithJobLogger(ctx context.Context, jobID string, jobName string, config *Co
 	}
 
 	{ // Adapt to Gitea
-		if hook := common.LoggerHook(ctx); hook != nil {
-			logger.AddHook(hook)
-		}
+		// For Bamboo
+		// we dont want logger hook
+		//if hook := common.LoggerHook(ctx); hook != nil {
+		//	logger.AddHook(hook)
+		//}
 		if config.JobLoggerLevel != nil {
 			logger.SetLevel(*config.JobLoggerLevel)
 		} else {

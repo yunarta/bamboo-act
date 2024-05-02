@@ -206,7 +206,15 @@ func (r *remoteReusableWorkflow) CloneURL() string {
 	if strings.HasPrefix(r.URL, "http://") || strings.HasPrefix(r.URL, "https://") {
 		return fmt.Sprintf("%s/%s/%s", r.URL, r.Org, r.Repo)
 	}
-	return fmt.Sprintf("https://%s/%s/%s", r.URL, r.Org, r.Repo)
+
+	// For Bamboo
+	// we wanted to check if the repository is Bitbucket and then add .git suffix if its missing
+	cloneUrl := fmt.Sprintf("https://%s/%s/%s", r.URL, r.Org, r.Repo)
+	if i := strings.Index(cloneUrl, "scm/"); i >= 0 && !strings.HasSuffix(cloneUrl, ".git") {
+		cloneUrl += ".git"
+	}
+
+	return cloneUrl
 }
 
 func (r *remoteReusableWorkflow) FilePath() string {

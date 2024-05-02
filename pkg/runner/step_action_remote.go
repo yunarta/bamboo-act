@@ -113,12 +113,13 @@ func (sar *stepActionRemote) prepareActionExecutor() common.Executor {
 			URL:   sar.remoteAction.CloneURL(sar.RunContext.Config.DefaultActionInstance),
 			Ref:   sar.remoteAction.Ref,
 			Dir:   actionDir,
-			Token: "", /*
-				Shouldn't provide token when cloning actions,
-				the token comes from the instance which triggered the task,
-				however, it might be not the same instance which provides actions.
-				For GitHub, they are the same, always github.com.
-				But for Gitea, tasks triggered by a.com can clone actions from b.com.
+			Token: "",
+			/*Token:  "",
+			Shouldn't provide token when cloning actions,
+			the token comes from the instance which triggered the task,
+			however, it might be not the same instance which provides actions.
+			For GitHub, they are the same, always github.com.
+			But for Gitea, tasks triggered by a.com can clone actions from b.com.
 			*/
 			OfflineMode: sar.RunContext.Config.ActionOfflineMode,
 
@@ -168,8 +169,10 @@ func (sar *stepActionRemote) main() common.Executor {
 		runStepExecutor(sar, stepStageMain, func(ctx context.Context) error {
 			github := sar.getGithubContext(ctx)
 			if sar.remoteAction.IsCheckout() && isLocalCheckout(github, sar.Step) && !sar.RunContext.Config.NoSkipCheckout {
-				if sar.RunContext.Config.BindWorkdir {
+				if !sar.RunContext.Config.SafeMode {
 					common.Logger(ctx).Debugf("Skipping local actions/checkout because you bound your workspace")
+
+					// For self-hosted bind, we could copy the source to host executor actually
 					return nil
 				}
 				eval := sar.RunContext.NewExpressionEvaluator(ctx)
@@ -293,7 +296,15 @@ func (ra *remoteAction) CloneURL(u string) string {
 		u = ra.URL
 	}
 
-	return fmt.Sprintf("%s/%s/%s", u, ra.Org, ra.Repo)
+	cloneUrl := fmt.Sprintf("%s/%s/%s", u, ra.Org, ra.Repo)
+
+	// For Bamboo
+	// we wanted to check if the repository is Bitbucket and then add .git suffix if its missing
+	if i := strings.Index(cloneUrl, "scm/"); i >= 0 && !strings.HasSuffix(cloneUrl, ".git") {
+		cloneUrl += ".git"
+	}
+
+	return cloneUrl
 }
 
 func (ra *remoteAction) IsCheckout() bool {
@@ -311,7 +322,18 @@ func newRemoteAction(action string) *remoteAction {
 			if len(splits) != 2 {
 				return nil
 			}
-			ret := parseAction(splits[1])
+
+			// For Bamboo
+			// identify Bitbucket Data Center source
+			isBitbucket := false
+			if i := strings.Index(splits[1], "scm/"); i >= 0 {
+				//action = action[i+4:]
+				splits[0] = fmt.Sprintf("%s/%s", splits[0], splits[1][:i+3])
+				splits[1] = splits[1][i+4:]
+				isBitbucket = true
+			}
+
+			ret := parseAction(splits[1], isBitbucket)
 			if ret == nil {
 				return nil
 			}
@@ -320,10 +342,10 @@ func newRemoteAction(action string) *remoteAction {
 		}
 	}
 
-	return parseAction(action)
+	return parseAction(action, false)
 }
 
-func parseAction(action string) *remoteAction {
+func parseAction(action string, isBitbucket bool) *remoteAction {
 	// GitHub's document[^] describes:
 	// > We strongly recommend that you include the version of
 	// > the action you are using by specifying a Git ref, SHA, or Docker tag number.
