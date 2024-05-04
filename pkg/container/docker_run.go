@@ -23,6 +23,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/system"
 	networktypes "github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -246,7 +247,7 @@ func GetDockerClient(ctx context.Context) (cli client.APIClient, err error) {
 	return cli, nil
 }
 
-func GetHostInfo(ctx context.Context) (info types.Info, err error) {
+func GetHostInfo(ctx context.Context) (info system.Info, err error) {
 	var cli client.APIClient
 	cli, err = GetDockerClient(ctx)
 	if err != nil {
@@ -316,7 +317,7 @@ func (cr *containerReference) find() common.Executor {
 		if cr.id != "" {
 			return nil
 		}
-		containers, err := cr.cli.ContainerList(ctx, types.ContainerListOptions{
+		containers, err := cr.cli.ContainerList(ctx, container.ListOptions{
 			All: true,
 		})
 		if err != nil {
@@ -344,7 +345,7 @@ func (cr *containerReference) remove() common.Executor {
 		}
 
 		logger := common.Logger(ctx)
-		err := cr.cli.ContainerRemove(ctx, cr.id, types.ContainerRemoveOptions{
+		err := cr.cli.ContainerRemove(ctx, cr.id, container.RemoveOptions{
 			RemoveVolumes: true,
 			Force:         true,
 		})
@@ -876,7 +877,7 @@ func (cr *containerReference) copyContent(dstPath string, files ...*FileEntry) c
 
 func (cr *containerReference) attach() common.Executor {
 	return func(ctx context.Context) error {
-		out, err := cr.cli.ContainerAttach(ctx, cr.id, types.ContainerAttachOptions{
+		out, err := cr.cli.ContainerAttach(ctx, cr.id, container.AttachOptions{
 			Stream: true,
 			Stdout: true,
 			Stderr: true,
@@ -914,7 +915,7 @@ func (cr *containerReference) start() common.Executor {
 		logger := common.Logger(ctx)
 		logger.Debugf("Starting container: %v", cr.id)
 
-		if err := cr.cli.ContainerStart(ctx, cr.id, types.ContainerStartOptions{}); err != nil {
+		if err := cr.cli.ContainerStart(ctx, cr.id, container.StartOptions{}); err != nil {
 			return fmt.Errorf("failed to start container: %w", err)
 		}
 
