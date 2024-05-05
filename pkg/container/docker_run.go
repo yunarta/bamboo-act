@@ -23,8 +23,8 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/system"
 	networktypes "github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/system"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-git/go-billy/v5/helper/polyfill"
@@ -113,7 +113,7 @@ func (cr *containerReference) Start(attach bool) common.Executor {
 				func(ctx context.Context) error {
 					// If this fails, then folders have wrong permissions on non root container
 					if cr.UID != 0 || cr.GID != 0 {
-						_ = cr.Exec([]string{"chown", "-R", fmt.Sprintf("%d:%d", cr.UID, cr.GID), cr.input.WorkingDir}, nil, "0", "")(ctx)
+						_ = cr.Exec([]string{"chown", "-R", fmt.Sprintf("%d:%d", cr.UID, cr.GID), cr.ToContainerPath(cr.input.WorkingDir)}, nil, "0", "")(ctx)
 					}
 					return nil
 				},
@@ -609,10 +609,10 @@ func (cr *containerReference) exec(cmd []string, env map[string]string, user, wo
 			if strings.HasPrefix(workdir, "/") {
 				wd = workdir
 			} else {
-				wd = fmt.Sprintf("%s/%s", cr.input.WorkingDir, workdir)
+				wd = fmt.Sprintf("%s/%s", cr.ToContainerPath(cr.input.WorkingDir), workdir)
 			}
 		} else {
-			wd = cr.input.WorkingDir
+			wd = cr.ToContainerPath(cr.input.WorkingDir)
 		}
 		logger.Debugf("Working directory '%s'", wd)
 

@@ -27,35 +27,45 @@ jobs:
         uses: goreleaser/goreleaser-action@v5
         with:
           version: latest
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
-      - name: Winget
-        uses: vedantmgoyal2009/winget-releaser@v2
+          args: build --clean --snapshot
+      - uses: actions/upload-artifact@v4
         with:
-          identifier: nektos.act
-          installers-regex: '_Windows_\w+\.zip$'
-          token: ${{ secrets.WINGET_TOKEN }}
-      - name: Chocolatey
-        uses: ./.github/actions/choco
-        with:
-          version: ${{ github.ref }}
-          apiKey: ${{ secrets.CHOCO_APIKEY }}
-          push: true
-      - name: GitHub CLI extension
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
-          script: |
-            const mainRef = (await github.rest.git.getRef({
-              owner: 'nektos',
-              repo: 'gh-act',
-              ref: 'heads/main',
-            })).data;
-            console.log(mainRef);
-            github.rest.git.createRef({
-              owner: 'nektos',
-              repo: 'gh-act',
-              ref: context.ref,
-              sha: mainRef.object.sha,
-            });
+          # Name of the artifact to upload.
+          # Optional. Default is 'artifact'
+          name: dist
+
+          # A file, directory or wildcard pattern that describes what to upload
+          # Required.
+          path: dist/**
+
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+#      - name: Winget
+#        uses: vedantmgoyal2009/winget-releaser@v2
+#        with:
+#          identifier: nektos.act
+#          installers-regex: '_Windows_\w+\.zip$'
+#          token: ${{ secrets.WINGET_TOKEN }}
+#      - name: Chocolatey
+#        uses: ./.github/actions/choco
+#        with:
+#          version: ${{ github.ref }}
+#          apiKey: ${{ secrets.CHOCO_APIKEY }}
+#          push: true
+#      - name: GitHub CLI extension
+#        uses: actions/github-script@v7
+#        with:
+#          github-token: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+#          script: |
+#            const mainRef = (await github.rest.git.getRef({
+#              owner: 'nektos',
+#              repo: 'gh-act',
+#              ref: 'heads/main',
+#            })).data;
+#            console.log(mainRef);
+#            github.rest.git.createRef({
+#              owner: 'nektos',
+#              repo: 'gh-act',
+#              ref: context.ref,
+#              sha: mainRef.object.sha,
+#            });

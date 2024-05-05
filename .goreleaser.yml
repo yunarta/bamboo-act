@@ -45,6 +45,6 @@ changelog:
       order: 2
     - title: 'Other'
       order: 999
-release:
-  prerelease: auto
-  mode: append
+#release:
+#  prerelease: auto
+#  mode: append

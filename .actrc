@@ -1,0 +1,4 @@
+-P ubuntu-latest=docker.mobilesolutionworks.com/gitea/runner-images:ubuntu-latest
+-P self-hosted=-self-hosted
+--artifact-server-path=artifact
+--env ACTIONS_RUNTIME_TOKENA=123
