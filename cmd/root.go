@@ -72,6 +72,7 @@ func Execute(ctx context.Context, version string) {
 	rootCmd.Flags().StringVar(&input.replaceGheActionTokenWithGithubCom, "replace-ghe-action-token-with-github-com", "", "If you are using replace-ghe-action-with-github-com  and you want to use private actions on GitHub, you have to set personal access token")
 	rootCmd.Flags().StringArrayVarP(&input.matrix, "matrix", "", []string{}, "specify which matrix configuration to include (e.g. --matrix java:13")
 	rootCmd.Flags().BoolVar(&input.bamboo, "bamboo", false, "execute in Bamboo, it will run work directory instead of host workspaces (faster and may delete your repo)")
+	rootCmd.Flags().StringVar(&input.bitbucketInstance, "default-action-instance", "", "default action bitbucket host, with scm as following https://bitbucket/scm")
 	rootCmd.PersistentFlags().StringVarP(&input.actor, "actor", "a", "nektos/act", "user that triggered the event")
 	rootCmd.PersistentFlags().StringVarP(&input.workflowsPath, "workflows", "W", "./.github/workflows/", "path to workflow file(s)")
 	rootCmd.PersistentFlags().BoolVarP(&input.noWorkflowRecurse, "no-recurse", "", false, "Flag to disable running workflows from subdirectories of specified path in '--workflows'/'-W' flag")
@@ -567,7 +568,7 @@ func newRunCommand(ctx context.Context, input *Input) func(*cobra.Command, []str
 			Matrix:                             matrixes,
 			ContainerNetworkMode:               docker_container.NetworkMode(input.networkName),
 			ContainerMaxLifetime:               3 * time.Hour,
-			DefaultActionInstance:              "https://bitbucket.mobilesolutionworks.com/bitbucket/scm",
+			DefaultActionInstance:              input.bitbucketInstance,
 		}
 		if input.useNewActionCache || len(input.localRepository) > 0 {
 			if input.actionOfflineMode {

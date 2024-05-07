@@ -61,6 +61,7 @@ type Input struct {
 	useNewActionCache                  bool
 	localRepository                    []string
 	bamboo                             bool
+	bitbucketInstance                  string
 }
 
 func (i *Input) resolve(path string) string {
